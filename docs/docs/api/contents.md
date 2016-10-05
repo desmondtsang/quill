@@ -2,12 +2,12 @@
 
 ### deleteText
 
-Deletes text from the editor, returing a [Delta](/guides/working-with-deltas/) representing the change. [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`. Calls where the `source` is `"user"` when the editor is [disabled](#disable) are ignored.
+Deletes text from the editor. [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`.
 
 **Methods**
 
 ```javascript
-deleteText(index: Number, length: Number, source: String = 'api'): Delta
+deleteText(index: Number, length: Number, source: String = 'api')
 ```
 
 **Examples**
@@ -22,7 +22,7 @@ Shorthand for [`enable(false)`](#enable).
 
 ### enable
 
-Set ability for user to edit, via input devices like the mouse or keyboard. Does not affect capabilities of API calls, when the `source` is `"api"` or `"silent".
+Set ability for user to edit, via input devices like the mouse or keyboard. Does not affect capabilities of API calls.
 
 **Methods**
 
@@ -39,7 +39,7 @@ quill.enable(false);   // Disables user input
 
 ### getContents
 
-Retrieves contents of the editor, with formatting data, represented by a [Delta](/guides/working-with-deltas/) object.
+Retrieves contents of the editor, with formatting data, represented by a [Delta](/docs/delta/) object.
 
 **Methods**
 
@@ -89,12 +89,12 @@ var text = quill.getText(0, 10);
 
 ### insertEmbed
 
-Insert embedded content into the editor, returing a [Delta](/guides/working-with-deltas/) representing the change. [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`. Calls where the `source` is `"user"` when the editor is [disabled](#disable) are ignored.
+Insert embedded content into the editor. [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`.
 
 **Methods**
 
 ```javascript
-insertEmbed(index: Number, type: String, value: any, source: String = 'api'): Delta
+insertEmbed(index: Number, type: String, value: any, source: String = 'api')
 ```
 
 **Examples**
@@ -105,16 +105,16 @@ quill.insertEmbed(10, 'image', 'http://quilljs.com/images/cloud.png');
 
 ### insertText
 
-Inserts text into the editor, optionally with a specified format or multiple [formats](/docs/formats/). Returns a [Delta](/guides/working-with-deltas/) representing the change. [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`. Calls where the `source` is `"user"` when the editor is [disabled](#disable) are ignored.
+Inserts text into the editor, optionally with a specified format or multiple [formats](/docs/formats/). [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`.
 
 **Methods**
 
 ```javascript
-insertText(index: Number, text: String, source: String = 'api'): Delta
+insertText(index: Number, text: String, source: String = 'api')
 insertText(index: Number, text: String, format: String, value: any,
-           source: String = 'api'): Delta
+           source: String = 'api')
 insertText(index: Number, text: String, formats: { [String]: any },
-           source: String = 'api'): Delta
+           source: String = 'api')
 ```
 
 **Examples**
@@ -136,12 +136,12 @@ This API has been moved into [Clipboard](/docs/modules/clipboard/#dangerouslypas
 
 ### setContents
 
-Overwrites editor with given contents. Contents should end with a newline (see [Working with Deltas](/guides/working-with-deltas/)). Returns a Delta representing the change. This will be the same as the Delta passed in, if given Delta had no invalid operations. [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`. Calls where the `source` is `"user"` when the editor is [disabled](#disable) are ignored.
+Overwrites editor with given contents. Contents should end with a [newline](/docs/delta/#line-formatting). [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`.
 
 **Methods**
 
 ```javascript
-setContents(delta: Delta, source: String = 'api'): Delta
+setContents(delta: Delta, source: String = 'api')
 ```
 
 **Examples**
@@ -156,12 +156,12 @@ quill.setContents([
 
 ### setText
 
-Sets contents of editor with given text, returing a [Delta](/guides/working-with-deltas/) representing the change. Note Quill documents must end with a newline so one will be added for you if omitted.  [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`. Calls where the `source` is `"user"` when the editor is [disabled](#disable) are ignored.
+Sets contents of editor with given text. Note Quill documents must end with a newline so one will be added for you if omitted.  [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`.
 
 **Methods**
 
 ```javascript
-setText(text: String, source: String = 'api'): Delta
+setText(text: String, source: String = 'api')
 ```
 
 **Examples**
@@ -188,12 +188,12 @@ quill.update();
 
 ### updateContents
 
-Applies Delta to editor contents, returing a [Delta](/guides/working-with-deltas/) representing the change. These Deltas will be the same if the Delta passed in had no invalid operations. [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`. Calls where the `source` is `"user"` when the editor is [disabled](#disable) are ignored.
+Applies Delta to editor contents. [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`.
 
 **Methods**
 
 ```javascript
-updateContents(delta: Delta, source: String = 'api'): Delta
+updateContents(delta: Delta, source: String = 'api')
 ```
 
 **Examples**
