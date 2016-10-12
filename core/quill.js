@@ -1,5 +1,5 @@
 import './polyfill';
-import Delta from 'quill-delta';
+import Delta from 'rich-text/lib/delta';
 import Editor from './editor';
 import Emitter from './emitter';
 import Module from './module';
@@ -48,43 +48,42 @@ class Quill {
   }
 
   constructor(container, options = {}) {
-    this.options = expandConfig(container, options);
-    this.container = this.options.container;
+    options = expandConfig(container, options);
+    this.container = options.container;
     if (this.container == null) {
       return debug.error('Invalid Quill container', container);
     }
-    if (this.options.debug) {
-      Quill.debug(this.options.debug);
+    if (options.debug) {
+      Quill.debug(options.debug);
     }
     let html = this.container.innerHTML.trim();
     this.container.classList.add('ql-container');
     this.container.innerHTML = '';
     this.root = this.addContainer('ql-editor');
     this.emitter = new Emitter();
+    this.scroll = Parchment.create(this.root, {
+      emitter: this.emitter,
+      whitelist: options.formats
+    });
+    this.editor = new Editor(this.scroll, this.emitter);
+    this.selection = new Selection(this.scroll, this.emitter);
     this.emitter.on(Emitter.events.EDITOR_CHANGE, (type) => {
       if (type === Emitter.events.TEXT_CHANGE) {
         this.root.classList.toggle('ql-blank', this.editor.isBlank());
       }
     });
-    this.scroll = Parchment.create(this.root, {
-      emitter: this.emitter,
-      whitelist: this.options.formats
-    });
-    this.editor = new Editor(this.scroll, this.emitter);
-    this.selection = new Selection(this.scroll, this.emitter);
-    this.theme = new this.options.theme(this, this.options);
+    this.theme = new options.theme(this, options);
     this.keyboard = this.theme.addModule('keyboard');
     this.clipboard = this.theme.addModule('clipboard');
     this.history = this.theme.addModule('history');
     this.theme.init();
-    let contents = this.clipboard.convert(`<div class='ql-editor' style="white-space: normal;">${html}<p><br></p></div>`);
-    this.setContents(contents);
+    this.pasteHTML(`<div class='ql-editor' style="white-space: normal;">${html}<p><br></p></div>`);
     this.history.clear();
-    if (this.options.readOnly) {
+    if (options.readOnly) {
       this.disable();
     }
-    if (this.options.placeholder) {
-      this.root.setAttribute('data-placeholder', this.options.placeholder);
+    if (options.placeholder) {
+      this.root.dataset.placeholder = options.placeholder;
     }
   }
 
@@ -104,21 +103,19 @@ class Quill {
 
   deleteText(index, length, source) {
     [index, length, , source] = overload(index, length, source);
-    return modify.call(this, source, index, -1*length, () => {
-      return this.editor.deleteText(index, length, source);
-    });
+    let range = this.getSelection();
+    let change = this.editor.deleteText(index, length, source);
+    range = shiftRange(range, index, -1*length, source);
+    this.setSelection(range, Emitter.sources.SILENT);
+    return change;
   }
 
   disable() {
-    this.enable(false);
+    this.editor.enable(false);
   }
 
   enable(enabled = true) {
     this.editor.enable(enabled);
-    this.container.classList.toggle('ql-disabled', !enabled);
-    if (!enabled) {
-      this.blur();
-    }
   }
 
   focus() {
@@ -127,9 +124,6 @@ class Quill {
   }
 
   format(name, value, source = Emitter.sources.API) {
-    if (!this.options.strict && !this.isEnabled() && source === Emitter.sources.USER) {
-      return new Delta();
-    }
     let range = this.getSelection(true);
     let change = new Delta();
     if (range == null) return change;
@@ -148,17 +142,21 @@ class Quill {
   formatLine(index, length, name, value, source) {
     let formats;
     [index, length, formats, source] = overload(index, length, name, value, source);
-    return modify.call(this, source, index, 0, () => {
-      return this.editor.formatLine(index, length, formats, source);
-    });
+    let range = this.getSelection();
+    let change = this.editor.formatLine(index, length, formats, source);
+    this.selection.setRange(range, true, Emitter.sources.SILENT);
+    this.selection.scrollIntoView();
+    return change;
   }
 
   formatText(index, length, name, value, source) {
     let formats;
     [index, length, formats, source] = overload(index, length, name, value, source);
-    return modify.call(this, source, index, 0, () => {
-      return this.editor.formatText(index, length, formats, source);
-    });
+    let range = this.getSelection();
+    let change = this.editor.formatText(index, length, formats, source);
+    this.selection.setRange(range, true, Emitter.sources.SILENT);
+    this.selection.scrollIntoView();
+    return change;
   }
 
   getBounds(index, length = 0) {
@@ -206,21 +204,20 @@ class Quill {
   }
 
   insertEmbed(index, embed, value, source = Quill.sources.API) {
-    return modify.call(this, source, index, null, () => {
-      return this.editor.insertEmbed(index, embed, value, source);
-    });
+    let range = this.getSelection();
+    let change = this.editor.insertEmbed(index, embed, value, source);
+    range = shiftRange(range, change, source);
+    this.setSelection(range, Emitter.sources.SILENT);
+    return change;
   }
 
   insertText(index, text, name, value, source) {
-    let formats;
+    let formats, range = this.getSelection();
     [index, , formats, source] = overload(index, 0, name, value, source);
-    return modify.call(this, source, index, text.length, () => {
-      return this.editor.insertText(index, text, formats, source);
-    });
-  }
-
-  isEnabled() {
-    return !this.container.classList.contains('ql-disabled');
+    let change = this.editor.insertText(index, text, formats, source);
+    range = shiftRange(range, index, text.length, source);
+    this.setSelection(range, Emitter.sources.SILENT);
+    return change;
   }
 
   off() {
@@ -235,21 +232,25 @@ class Quill {
     return this.emitter.once.apply(this.emitter, arguments);
   }
 
-  pasteHTML(index, html, source) {
-    this.clipboard.dangerouslyPasteHTML(index, html, source);
+  pasteHTML(index, html, source = Emitter.sources.API) {
+    if (typeof index === 'string') {
+      return this.setContents(this.clipboard.convert(index), html);
+    } else {
+      let paste = this.clipboard.convert(html);
+      return this.updateContents(new Delta().retain(index).concat(paste), source);
+    }
   }
 
   removeFormat(index, length, source) {
+    let range = this.getSelection();
     [index, length, , source] = overload(index, length, source);
-    return modify.call(this, source, index, null, () => {
-      return this.editor.removeFormat(index, length, source);
-    });
+    let change = this.editor.removeFormat(index, length, source);
+    range = shiftRange(range, change, source);
+    this.setSelection(range, Emitter.sources.SILENT);
+    return change;
   }
 
   setContents(delta, source = Emitter.sources.API) {
-    if (!this.options.strict && !this.isEnabled() && source === Emitter.sources.USER) {
-      return new Delta();
-    }
     delta = new Delta(delta).slice();
     let lastOp = delta.ops[delta.ops.length - 1];
     // Quill contents must always end with newline
@@ -282,9 +283,6 @@ class Quill {
   }
 
   updateContents(delta, source = Emitter.sources.API) {
-    if (!this.options.strict && !this.isEnabled() && source === Emitter.sources.USER) {
-      return new Delta();
-    }
     let range = this.getSelection();
     if (Array.isArray(delta)) {
       delta = new Delta(delta.slice());
@@ -298,12 +296,11 @@ class Quill {
   }
 }
 Quill.DEFAULTS = {
-  bounds: null,
+  bounds: document.body,
   formats: null,
   modules: {},
   placeholder: '',
   readOnly: false,
-  strict: true,
   theme: 'default'
 };
 Quill.events = Emitter.events;
@@ -327,7 +324,7 @@ function expandConfig(container, userConfig) {
       history: true
     }
   }, userConfig);
-  if (!userConfig.theme || userConfig.theme === Quill.DEFAULTS.theme) {
+  if (userConfig.theme == null || userConfig.theme === Quill.DEFAULTS.theme) {
     userConfig.theme = Theme;
   } else {
     userConfig.theme = Quill.import(`themes/${userConfig.theme}`);
@@ -355,7 +352,7 @@ function expandConfig(container, userConfig) {
     return config;
   }, {});
   // Special case toolbar shorthand
-  if (userConfig.modules != null && userConfig.modules.toolbar &&
+  if (userConfig.modules != null && userConfig.modules.toolbar != null &&
       userConfig.modules.toolbar.constructor !== Object) {
     userConfig.modules.toolbar = {
       container: userConfig.modules.toolbar
@@ -367,31 +364,7 @@ function expandConfig(container, userConfig) {
       userConfig[key] = document.querySelector(userConfig[key]);
     }
   });
-  userConfig.modules = Object.keys(userConfig.modules).reduce(function(config, name) {
-    if (userConfig.modules[name]) {
-      config[name] = userConfig.modules[name];
-    }
-    return config;
-  }, {});
   return userConfig;
-}
-
-function modify(source, index, shift, modifier) {
-  let change = new Delta();
-  if (!this.options.strict && !this.isEnabled() && source === Emitter.sources.USER) {
-    return new Delta();
-  }
-  let range = this.getSelection();
-  change = modifier();
-  if (range != null) {
-    if (shift === null) {
-      range = shiftRange(range, index, change, source);
-    } else if (shift !== 0) {
-      range = shiftRange(range, index, shift, source);
-    }
-    this.setSelection(range, Emitter.sources.SILENT);
-  }
-  return change;
 }
 
 function overload(index, length, name, value, source) {
