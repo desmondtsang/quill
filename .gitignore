@@ -2,3 +2,4 @@
 /selenium
 /docs/_site
 *.log
+node_modules/
