@@ -39,7 +39,7 @@ quill.enable(false);   // Disables user input
 
 ### getContents
 
-Retrieves contents of the editor, with formatting data, represented by a [Delta](/guides/working-with-deltas/) object.
+Retrieves contents of the editor, with formatting data, represented by a [Delta](/docs/delta/) object.
 
 **Methods**
 
@@ -71,7 +71,9 @@ var length = quill.getLength();
 
 ### getText
 
-Retrieves the string contents of the editor. `length` defaults to the length of the remaining document. Note even when Quill is empty, there is still a blank line in the editor, so `getText` will return '\n'.
+Retrieves the string contents of the editor. Non-string content are omitted, so the returned string's length may be shorter than the editor's as returned by [`getLength`](#getlength). Note even when Quill is empty, there is still a blank line in the editor, so in these cases `getText` will return '\n'.
+
+The `length` parameter defaults to the length of the remaining document.
 
 **Methods**
 
@@ -134,7 +136,7 @@ This API has been moved into [Clipboard](/docs/modules/clipboard/#dangerouslypas
 
 ### setContents
 
-Overwrites editor with given contents. Contents should end with a newline (see [Working with Deltas](/guides/working-with-deltas/)). [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`.
+Overwrites editor with given contents. Contents should end with a [newline](/docs/delta/#line-formatting). [Source](/docs/api/#events) may be `"user"`, `"api"`, or `"silent"`.
 
 **Methods**
 
